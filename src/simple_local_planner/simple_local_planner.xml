@@ -1,0 +1,9 @@
+<library path="lib/libsimple_local_planner">
+  <class name="simple_local_planner/SimpleLocalPlannerROS"
+         type="simple_local_planner::SimpleLocalPlannerROS"
+         base_class_type="nav_core::BaseLocalPlanner">
+    <description>
+      A pure path-tracking local planner that follows the global path monotonically using a lookahead target.
+    </description>
+  </class>
+</library>

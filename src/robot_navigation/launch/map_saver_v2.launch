@@ -1,0 +1,4 @@
+<launch>
+	<node pkg="map_server" type="map_saver" name="map_saver2" args="-f /home/lbw/workspace/ros_program/rk_ws/src/robot_navigation/map/rk_map_v4_2" output="screen">	
+	</node>
+</launch>

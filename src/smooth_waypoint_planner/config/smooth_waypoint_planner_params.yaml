@@ -1,0 +1,10 @@
+SmoothWaypointPlanner:
+  waypoint_file: ""
+  waypoints_topic: "/waypoint_editor/waypoints_path"
+  prefer_live_waypoints: true
+  resolution: 0.05
+  min_waypoint_spacing: 0.05
+  waypoint_reached_threshold: 0.2
+  corner_rounding_min_turn_deg: 30.0
+  corner_blend_distance: 0.3
+  loop_waypoints: false

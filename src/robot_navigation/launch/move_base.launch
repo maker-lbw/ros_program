@@ -1,0 +1,36 @@
+<launch>
+  <!-- Arguments -->
+  <arg name="planner"  default="simple" doc="opt: dwa, teb, simple"/>
+  <arg name="simulation" default= "false"/>
+  <arg name="use_dijkstra" default= "true"/>
+
+  <!-- move_base use DWA planner -->
+  <group if="$(eval planner == 'dwa')">
+    <rosparam file="$(find robot_navigation)/param/params_nav_common/move_base_params.yaml" command="load" ns="move_base"/>
+    <rosparam file="$(find robot_navigation)/param/params_nav_common/smooth_waypoint_planner_params.yaml" command="load" ns="move_base"/>
+    <param name="move_base/base_global_planner" value="smooth_waypoint_planner/SmoothWaypointPlanner"/>
+    <param name="move_base/base_local_planner" type="string" value="dwa_local_planner/DWAPlannerROS"/>
+    <rosparam file="$(find robot_navigation)/param/params_nav_common/dwa_local_planner_params.yaml" command="load" ns="move_base"/>
+    <rosparam file="$(find robot_navigation)/param/params_costmap_common/costmap_common_params.yaml" command="load" ns="move_base/global_costmap"/>
+    <rosparam file="$(find robot_navigation)/param/params_costmap_common/costmap_common_params.yaml" command="load" ns="move_base/local_costmap"/>
+    <rosparam file="$(find robot_navigation)/param/params_costmap_common/local_costmap_params.yaml" command="load" ns="move_base"/>
+    <rosparam file="$(find robot_navigation)/param/params_costmap_common/global_costmap_params.yaml" command="load" ns="move_base"/>
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen" clear_params="false"/>
+  </group>
+
+  <!-- move_base use TEB planner -->
+  <group if="$(eval planner == 'teb')">
+    <rosparam file="$(find robot_navigation)/param/params_nav_common/move_base_params.yaml" command="load" ns="move_base"/>
+    <rosparam file="$(find robot_navigation)/param/params_nav_common/smooth_waypoint_planner_params.yaml" command="load" ns="move_base"/>
+    <param name="move_base/base_global_planner" value="smooth_waypoint_planner/SmoothWaypointPlanner"/>
+    <param name="move_base/base_local_planner" type="string" value="simple_local_planner/SimpleLocalPlannerROS"/>
+    <rosparam file="$(find robot_navigation)/param/params_nav_common/simple_local_planner.yaml" command="load" ns="move_base"/>
+    <rosparam file="$(find robot_navigation)/param/params_costmap_common/costmap_common_params.yaml" command="load" ns="move_base/global_costmap"/>
+    <rosparam file="$(find robot_navigation)/param/params_costmap_common/costmap_common_params.yaml" command="load" ns="move_base/local_costmap"/>
+    <rosparam file="$(find robot_navigation)/param/params_costmap_common/local_costmap_params.yaml" command="load" ns="move_base"/>
+    <rosparam file="$(find robot_navigation)/param/params_costmap_common/global_costmap_params.yaml" command="load" ns="move_base"/>
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen" clear_params="false"/>
+  </group>
+
+
+</launch>

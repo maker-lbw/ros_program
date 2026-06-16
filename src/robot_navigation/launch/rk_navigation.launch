@@ -1,0 +1,35 @@
+<launch>
+
+  <include file="$(find robot_simulation)/launch/simulation.launch"/>
+  <!-- Arguments -->
+  <!-- <arg name="map_file" default="$(find robot_navigation)/map/map.yaml"/> -->
+  <arg name="map_file" default="$(find robot_navigation)/map/rk_map_v4_2.yaml"/>
+  <arg name="simulation" default= "true"/>
+  <arg name="planner"  default="teb" doc="opt: dwa, teb, simple"/>
+  <arg name="use_dijkstra" default= "true"/>
+  <arg name="open_rviz" default="true"/>
+
+  <node pkg="map_server" name="map_server" type="map_server" args="$(arg map_file)">
+    <param name="frame_id" value="map"/>
+  </node>
+
+  <node pkg="jie_ware" type="lidar_loc" name="lidar_loc">
+    <param name="base_frame" value="base_link"/>
+    <param name="odom_frame" value="odom"/>
+    <param name="laser_frame" value="laser_Link"/>
+    <param name="laser_topic" value="scan"/>
+  </node>
+
+
+
+  <include file="$(find robot_navigation)/launch/move_base.launch">
+    <arg name="planner" value="$(arg planner)"/>
+    <arg name="simulation" value="$(arg simulation)"/>
+    <arg name="use_dijkstra" value="$(arg use_dijkstra)"/>
+  </include>
+
+  <group if="$(arg open_rviz)">
+    <node pkg="rviz" type="rviz" name="rviz" required="true" output="screen"
+          args="-d $(find robot_navigation)/rviz/navigation_v4_2.rviz"/>
+  </group>
+</launch>

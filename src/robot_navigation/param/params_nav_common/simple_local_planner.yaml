@@ -1,0 +1,20 @@
+SimpleLocalPlannerROS:
+  yaw_tolerance: 0.1
+  xy_goal_tolerance: 0.1
+
+  lookahead_distance: 0.35
+  min_lookahead_distance: 0.15
+  closest_pose_search_window: 40
+
+  goal_slowdown_distance: 0.50
+  heading_error_slowdown: 1.50
+  heading_error_gain: 1.80
+  curvature_gain: 0.80
+  final_heading_gain: 1.50
+
+  min_linear_speed: 0.04
+  max_linear_speed: 0.5
+  max_angular_speed: 0.80
+
+  allow_final_rotation: true
+  rotate_in_place_heading_threshold: 1.20

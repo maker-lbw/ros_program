@@ -1,0 +1,10 @@
+<library path="lib/libsmooth_waypoint_planner">
+  <class
+      name="smooth_waypoint_planner/SmoothWaypointPlanner"
+      type="smooth_waypoint_planner::SmoothWaypointPlanner"
+      base_class_type="nav_core::BaseGlobalPlanner">
+    <description>
+      A smooth global planner that turns waypoint_editor_ros1 CSV waypoints into a smooth path.
+    </description>
+  </class>
+</library>

@@ -1,0 +1,22 @@
+
+<launch>
+  <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find robot_simulation)/models"/>
+  <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find robot_simulation)/models"/>
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+  <!-- rk_map_v4 添加点光源和识别内容的模型 -->
+    <arg name="world_name" value="$(find robot_simulation)/world/rk_map_v4.world"/>
+  <!-- rk_map_v3有基础地图 -->
+    <!-- <arg name="world_name" value="$(find robot_simulation)/world/rk_map_v3.world"/># -->
+    <!-- <arg name="world_name" value="$(find robot_simulation)/world/competition.world"/> -->
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+    <arg name="headless" value="false"/>
+    <arg name="debug" value="false"/>
+  </include>
+</launch>
+
+
+
+
