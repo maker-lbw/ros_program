@@ -60,6 +60,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
   FILES
   detect.srv
+  RecognizeWaypoint.srv
 
 )
 
@@ -110,6 +111,11 @@ catkin_package(
 #  LIBRARIES liguanxi_ros_car_main
 #  CATKIN_DEPENDS roscpp rospy std_msgs
 #  DEPENDS system_lib
+CATKIN_DEPENDS
+roscpp
+rospy
+std_msgs
+message_runtime
 )
 
 ###########

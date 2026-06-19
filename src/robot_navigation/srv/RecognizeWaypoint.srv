@@ -1,0 +1,8 @@
+string waypoint_id          # 请求：航点编号（或名称）
+---
+bool success                # 是否成功
+string message              # 状态信息
+int32 enemy_count           # 敌方数量
+int32 friend_count          # 友军数量
+int32 hostage_count         # 人质数量
+string saved_image_path     # 保存的图像路径
