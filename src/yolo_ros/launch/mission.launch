@@ -1,0 +1,13 @@
+<launch>
+    <!-- 加载参数到参数服务器 -->
+    <rosparam command="load" file="$(find yolo_ros)/config/mission_params.yaml" />
+
+    <!-- 启动识别节点 -->
+    <node pkg="yolo_ros" type="recognizer_node.py" name="recognizer_node" output="screen">
+        <!-- 参数可在launch中覆盖，也可直接从参数服务器读取，这里留空 -->
+    </node>
+
+    <!-- 启动任务节点 -->
+    <node pkg="robot_navigation" type="rk_nav_yolo.py" name="mission_controller" output="screen">
+    </node>
+</launch>

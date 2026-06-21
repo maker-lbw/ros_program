@@ -1,0 +1,19 @@
+# 任务参数
+recognition_wp_indices: [4, 13]       # 需要识别并打印结果的航点索引（从0开始）
+rotation_only_wp_indices: [18]        # 只需要旋转到预设朝向的航点索引
+task_waypoint_tolerance: 0.2          # 到达判断距离阈值
+
+# 模型和路径
+model_path: "weights/best.pt"         # 相对于yolo_ros包的路径
+image_topic: "/image_raw"             # 摄像头话题
+results_dir: "results"                # 标注图、文本保存目录
+raw_image_dir: "picture/camera"       # 原始图像保存目录
+
+# 旋转控制参数（可选）
+turn_angular_speed: 0.6
+turn_min_angular_speed: 0.18
+turn_final_angular_speed: 0.06
+turn_kp: 1.8
+turn_slowdown_deg: 20.0
+turn_tolerance_deg: 2.0
+turn_settle_time: 0.5

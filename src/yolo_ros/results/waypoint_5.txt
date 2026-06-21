@@ -1,6 +1,6 @@
 Waypoint 5
 enemy: 0
 friend_army: 2
-hostage: 2
-Saved image: /home/lbw/workspace/ros_program/rk_ws/src/yolo_ros/results/waypoint_5.jpg
-Original image: /home/lbw/workspace/ros_program/rk_ws/src/yolo_ros/picture/camera/waypoint_5_original.jpg
+hostage: 1
+原始图像: /home/lbw/workspace/ros_program/rk_ws/src/yolo_ros/picture/camera/raw_waypoint_5.jpg
+标注图像: /home/lbw/workspace/ros_program/rk_ws/src/yolo_ros/results/annotated_waypoint_5.jpg

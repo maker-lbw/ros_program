@@ -4,16 +4,12 @@
 """
 YOLO 识别节点（ROS服务版）
 功能：
-- 订阅摄像头图像话题（默认 /image_raw），缓存最新一帧
-- 提供服务 /recognize_waypoint，接收航点ID（字符串）
-- 对当前图像进行YOLO推理，统计三类（enemy, friend_army, hostage）的数量
-- 保存带标注的图像到 yolo_ros/results/ 目录
-- 保存原始摄像头图像到 yolo_ros/picture/camera/ 目录（便于后续分析）
-- 返回识别结果（各类数量、图像保存路径）
-
-依赖：
-- ultralytics, opencv-python, cv_bridge
-- 服务类型 RecognizeWaypoint（由 robot_navigation 包提供）
+- 订阅摄像头图像，缓存最新帧
+- 提供服务 /recognize_waypoint，接收航点ID
+- 对图像进行YOLO推理，统计三类数量
+- 保存原始图像到 raw_image_dir
+- 保存标注图像和文本计数到 results_dir
+- 所有路径均通过参数服务器配置
 """
 
 import os
@@ -22,90 +18,80 @@ import cv2
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from ultralytics import YOLO
-
-# 导入自定义服务（若服务定义在 yolo_ros 包，请相应修改）
 from robot_navigation.srv import RecognizeWaypoint, RecognizeWaypointResponse
 
 
 class RecognizerNode:
-    """YOLO识别节点类"""
-
     def __init__(self):
         rospy.init_node("recognizer_node", anonymous=True)
 
-        # ---------- 自动定位功能包根目录 ----------
-        # 获取当前脚本所在目录（假设为 .../yolo_ros/scripts/）
+        # ---------- 从参数服务器读取配置 ----------
+        # 功能包根目录（自动定位）
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        # 功能包根目录（scripts 的父目录）
-        self.pkg_dir = os.path.dirname(script_dir)
+        self.pkg_dir = os.path.dirname(script_dir)  # yolo_ros 根目录
 
-        # ---------- 硬编码路径（相对于功能包根目录） ----------
-        self.model_path = os.path.join(self.pkg_dir, "weights", "best.pt")
-        # 带标注的结果图像保存目录
-        self.annotated_dir = os.path.join(self.pkg_dir, "results")
-        # 原始摄像头图像保存目录
-        self.original_dir = os.path.join(self.pkg_dir, "picture", "camera")
+        # 模型路径（相对或绝对）
+        model_rel = rospy.get_param("~model_path", "weights/best.pt")
+        self.model_path = os.path.join(self.pkg_dir, model_rel)
 
-        # 类别名称（必须与训练时 classes.txt 顺序一致）
+        # 图像话题
+        self.image_topic = rospy.get_param("~image_topic", "/image_raw")
+
+        # 结果保存目录（相对功能包根目录）
+        results_rel = rospy.get_param("~results_dir", "results")
+        self.results_dir = os.path.join(self.pkg_dir, results_rel)
+
+        # 原始图像保存目录
+        raw_rel = rospy.get_param("~raw_image_dir", "picture/camera")
+        self.raw_image_dir = os.path.join(self.pkg_dir, raw_rel)
+
+        # 类别名称（必须与训练时一致）
         self.class_names = ["enemy", "friend_army", "hostage"]
 
-        # ---------- 初始化ROS组件 ----------
+        # ---------- 初始化ROS ----------
         self.bridge = CvBridge()
-        self.latest_image = None   # 存储最新一帧（BGR格式）
+        self.latest_image = None
 
-        # 加载YOLO模型（若路径不存在则报错）
+        # 加载模型
         if not os.path.exists(self.model_path):
             rospy.logerr("模型文件不存在: %s", self.model_path)
             rospy.signal_shutdown("模型文件缺失")
         rospy.loginfo("加载模型: %s", self.model_path)
         self.model = YOLO(self.model_path)
 
-        # 订阅图像话题（默认改为 /image_raw，可通过参数调整）
-        image_topic = rospy.get_param("~image_topic", "/image_raw")
-        rospy.Subscriber(image_topic, Image, self.image_callback, queue_size=1)
-        rospy.loginfo("订阅图像话题: %s", image_topic)
+        # 订阅图像
+        rospy.Subscriber(self.image_topic, Image, self.image_callback, queue_size=1)
+        rospy.loginfo("订阅图像话题: %s", self.image_topic)
 
         # 提供服务
-        self.service = rospy.Service(
-            "/recognize_waypoint",
-            RecognizeWaypoint,
-            self.handle_recognize
-        )
+        self.service = rospy.Service("/recognize_waypoint", RecognizeWaypoint, self.handle_recognize)
         rospy.loginfo("识别节点已启动，等待识别请求...")
 
     def image_callback(self, msg):
-        """将ROS图像转为OpenCV BGR并缓存"""
         try:
             self.latest_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         except Exception as e:
             rospy.logwarn("图像转换失败: %s", e)
 
     def handle_recognize(self, req):
-        """
-        服务回调：执行识别，返回结果
-        req.waypoint_id: 航点标识（字符串）
-        """
         response = RecognizeWaypointResponse()
 
-        # 检查是否有图像
         if self.latest_image is None:
             response.success = False
             response.message = "未收到图像，请检查相机话题"
             return response
 
-        # ---------- 保存原始图像 ----------
-        # 确保目录存在
-        os.makedirs(self.original_dir, exist_ok=True)
-        # 生成文件名（基于航点ID）
         wp_id = req.waypoint_id if req.waypoint_id else "unknown"
-        original_filename = f"waypoint_{wp_id}_original.jpg"
-        original_path = os.path.join(self.original_dir, original_filename)
-        # 保存原始图像（BGR）
-        cv2.imwrite(original_path, self.latest_image)
-        rospy.loginfo("原始图像已保存至: %s", original_path)
 
-        # ---------- YOLO推理 ----------
-        results = self.model(self.latest_image)[0]   # 取第一张图
+        # ---------- 1. 保存原始图像 ----------
+        os.makedirs(self.raw_image_dir, exist_ok=True)
+        raw_filename = f"raw_waypoint_{wp_id}.jpg"
+        raw_path = os.path.join(self.raw_image_dir, raw_filename)
+        cv2.imwrite(raw_path, self.latest_image)
+        rospy.loginfo("原始图像已保存至: %s", raw_path)
+
+        # ---------- 2. YOLO推理 ----------
+        results = self.model(self.latest_image)[0]
 
         # 统计各类数量
         counts = {cls: 0 for cls in self.class_names}
@@ -115,31 +101,31 @@ class RecognizerNode:
             else:
                 rospy.logwarn("发现未知类别id: %d", cls_id)
 
-        # ---------- 保存带标注的图像 ----------
-        os.makedirs(self.annotated_dir, exist_ok=True)
-        annotated_filename = f"waypoint_{wp_id}.jpg"
-        annotated_path = os.path.join(self.annotated_dir, annotated_filename)
-        annotated_img = results.plot()   # 绘制检测框
-        cv2.imwrite(annotated_path, annotated_img)
+        # ---------- 3. 保存标注图像和文本 ----------
+        os.makedirs(self.results_dir, exist_ok=True)
 
-        # ---------- 保存文本计数 ----------
-        txt_path = os.path.join(self.annotated_dir, f"waypoint_{wp_id}.txt")
+        annotated_img = results.plot()
+        ann_filename = f"annotated_waypoint_{wp_id}.jpg"
+        ann_path = os.path.join(self.results_dir, ann_filename)
+        cv2.imwrite(ann_path, annotated_img)
+
+        txt_path = os.path.join(self.results_dir, f"waypoint_{wp_id}.txt")
         with open(txt_path, "w") as f:
             f.write(f"Waypoint {wp_id}\n")
             for cls, cnt in counts.items():
                 f.write(f"{cls}: {cnt}\n")
-            f.write(f"Saved image: {annotated_path}\n")
-            f.write(f"Original image: {original_path}\n")
+            f.write(f"原始图像: {raw_path}\n")
+            f.write(f"标注图像: {ann_path}\n")
 
-        # 填充响应
+        # ---------- 4. 填充响应 ----------
         response.success = True
         response.message = "识别完成"
         response.enemy_count = counts["enemy"]
         response.friend_count = counts["friend_army"]
         response.hostage_count = counts["hostage"]
-        response.saved_image_path = annotated_path  # 保留标注图路径（也可改为原始图）
+        response.saved_image_path = ann_path
 
-        rospy.loginfo("航点 %s 识别完成，结果保存至 %s", wp_id, self.annotated_dir)
+        rospy.loginfo("航点 %s 识别完成，结果保存至 %s", wp_id, self.results_dir)
         return response
 
 

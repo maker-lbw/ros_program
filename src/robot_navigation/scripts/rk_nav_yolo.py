@@ -5,10 +5,10 @@
 导航任务控制器（带识别和旋转）
 功能：
 - 启动/暂停/恢复/停止 waypoint_editor 导航
-- 在指定航点（第5、14个）暂停，旋转到航点朝向，执行YOLO识别
-- 在最后一个航点（第19个）仅旋转到目标朝向（不识别）
-- 打印格式化的识别结果
-- 保存原始图像和标注图像
+- 在指定航点暂停，旋转到目标朝向，执行YOLO识别（通过服务调用）
+- 在仅旋转航点（如最后一个）仅旋转，不识别
+- 格式化输出识别结果（战区1/战区2）
+- 所有可调参数均从参数服务器读取
 """
 
 import math
@@ -22,7 +22,7 @@ from robot_navigation.srv import RecognizeWaypoint, RecognizeWaypointRequest
 
 class MissionController(object):
     def __init__(self):
-        rospy.init_node("mission", anonymous=False)
+        rospy.init_node("mission_controller", anonymous=False)
         rospy.on_shutdown(self.shutdown)
 
         # ---------- 发布器 ----------
@@ -34,20 +34,23 @@ class MissionController(object):
         self.total_waypoints = 0
         self.last_printed_index = -1
 
-        # 机器人位置和朝向
         self.current_position = None
         self.current_yaw = None
 
-        # 航点路径
         self.waypoint_path_poses = []
         self.waypoint_positions = []
 
-        # 需要识别的航点索引（第5个→索引4，第14个→索引13）
-        self.recognition_wp_indices = [4, 13]
+        # ---------- 从参数服务器读取任务相关参数 ----------
+        # 需要识别并打印结果的航点索引（列表，如 [4, 13]）
+        self.recognition_wp_indices = rospy.get_param("~recognition_wp_indices", [4, 13])
         self.recognized_flags = {idx: False for idx in self.recognition_wp_indices}
 
-        # 最后一个航点旋转标志
-        self.last_wp_rotated = False
+        # 仅需要旋转到预设朝向的航点索引（列表，如 [18]）
+        self.rotation_only_wp_indices = rospy.get_param("~rotation_only_wp_indices", [18])
+        self.rotated_flags = {idx: False for idx in self.rotation_only_wp_indices}
+
+        # 到达判断距离阈值
+        self.task_waypoint_tolerance = rospy.get_param("~task_waypoint_tolerance", 0.2)
 
         # ---------- 旋转控制参数 ----------
         self.turn_angular_speed = rospy.get_param("~turn_angular_speed", 0.6)
@@ -57,7 +60,6 @@ class MissionController(object):
         self.turn_slowdown_deg = rospy.get_param("~turn_slowdown_deg", 20.0)
         self.turn_tolerance_deg = rospy.get_param("~turn_tolerance_deg", 2.0)
         self.turn_settle_time = rospy.get_param("~turn_settle_time", 0.5)
-        self.task_waypoint_tolerance = rospy.get_param("~task_waypoint_tolerance", 0.2)
 
         # ---------- 导航服务代理 ----------
         rospy.loginfo("等待 waypoint_editor 导航服务...")
@@ -83,6 +85,8 @@ class MissionController(object):
         rospy.Subscriber("/odom", Odometry, self.odom_callback, queue_size=10)
 
         rospy.loginfo("任务控制器已启动")
+        rospy.loginfo("识别航点索引: %s", self.recognition_wp_indices)
+        rospy.loginfo("仅旋转航点索引: %s", self.rotation_only_wp_indices)
 
     # ---------- 回调函数 ----------
     def status_callback(self, msg):
@@ -144,7 +148,7 @@ class MissionController(object):
         rospy.loginfo("导航已恢复")
         return True
 
-    # ---------- 旋转辅助函数 ----------
+    # ---------- 旋转辅助 ----------
     def normalize_angle(self, angle):
         while angle > math.pi:
             angle -= 2.0 * math.pi
@@ -224,7 +228,7 @@ class MissionController(object):
         rospy.sleep(self.turn_settle_time)
         rospy.loginfo("旋转完成")
 
-    # ---------- 判断是否接近航点 ----------
+    # ---------- 辅助判断 ----------
     def is_near_waypoint(self, index):
         if self.current_position is None or index >= len(self.waypoint_positions):
             return False
@@ -236,12 +240,12 @@ class MissionController(object):
     def do_recognition(self, wp_index):
         rospy.loginfo("到达指定航点 %d，暂停导航进行识别...", wp_index + 1)
 
-        # 1. 暂停导航
+        # 1. 暂停
         if not self.pause_navigation():
             rospy.logerr("暂停导航失败，跳过识别")
             return
 
-        # 2. 旋转到航点朝向
+        # 2. 旋转到目标朝向
         target_yaw = self.get_waypoint_yaw_deg(wp_index)
         if target_yaw is not None:
             self.rotate_to_yaw(target_yaw)
@@ -276,9 +280,9 @@ class MissionController(object):
         if not self.resume_navigation():
             rospy.logerr("恢复导航失败，任务可能中断")
 
-    # ---------- 执行仅旋转任务（最后一个航点） ----------
+    # ---------- 执行仅旋转任务 ----------
     def do_rotation_only(self, wp_index):
-        rospy.loginfo("到达最后一个航点 %d，暂停导航进行旋转...", wp_index + 1)
+        rospy.loginfo("到达航点 %d，暂停导航进行旋转（不识别）...", wp_index + 1)
 
         if not self.pause_navigation():
             rospy.logerr("暂停导航失败，跳过旋转")
@@ -304,21 +308,21 @@ class MissionController(object):
         rospy.loginfo("航点导航已启动，等待任务完成...")
 
         while not rospy.is_shutdown():
-            # 1. 处理识别航点
+            # 检查识别航点
             if self.current_index in self.recognition_wp_indices:
                 idx = self.current_index
                 if not self.recognized_flags.get(idx, False) and self.is_near_waypoint(idx):
                     self.recognized_flags[idx] = True
                     self.do_recognition(idx)
 
-            # 2. 处理最后一个航点（仅旋转）
-            if self.total_waypoints > 0:
-                last_idx = self.total_waypoints - 1
-                if self.current_index == last_idx and not self.last_wp_rotated and self.is_near_waypoint(last_idx):
-                    self.last_wp_rotated = True
-                    self.do_rotation_only(last_idx)
+            # 检查仅旋转航点
+            if self.current_index in self.rotation_only_wp_indices:
+                idx = self.current_index
+                if not self.rotated_flags.get(idx, False) and self.is_near_waypoint(idx):
+                    self.rotated_flags[idx] = True
+                    self.do_rotation_only(idx)
 
-            # 3. 检查导航状态
+            # 状态检查
             if self.navigation_status == "FINISHED":
                 rospy.loginfo("导航任务完成")
                 return
