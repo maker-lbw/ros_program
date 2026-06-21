@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   message_generation
+  robot_navigation
 )
 
 ## System dependencies are found with CMake's conventions

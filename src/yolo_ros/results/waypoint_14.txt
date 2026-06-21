@@ -1,0 +1,6 @@
+Waypoint 14
+enemy: 3
+friend_army: 0
+hostage: 1
+Saved image: /home/lbw/workspace/ros_program/rk_ws/src/yolo_ros/results/waypoint_14.jpg
+Original image: /home/lbw/workspace/ros_program/rk_ws/src/yolo_ros/picture/camera/waypoint_14_original.jpg

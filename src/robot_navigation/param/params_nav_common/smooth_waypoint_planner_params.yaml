@@ -1,6 +1,6 @@
 SmoothWaypointPlanner:
   # waypoint_file: "/home/lbw/ws_com/src/robot_navigation/config/com.csv"
-  waypoint_file: "/home/lbw/workspace/ros_program/rk_ws/src/robot_navigation/config/rk_map_v4.csv"
+  waypoint_file: "/home/lbw/workspace/ros_program/rk_ws/src/robot_navigation/config/rk_map_v4_improve.csv"
   waypoints_topic: "/waypoint_editor/waypoints_path"
   prefer_live_waypoints: true
   resolution: 0.05

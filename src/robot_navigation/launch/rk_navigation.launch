@@ -30,6 +30,6 @@
 
   <group if="$(arg open_rviz)">
     <node pkg="rviz" type="rviz" name="rviz" required="true" output="screen"
-          args="-d $(find robot_navigation)/rviz/navigation_v4_2.rviz"/>
+          args="-d $(find robot_navigation)/rviz/navigation_showMark.rviz"/>
   </group>
 </launch>
